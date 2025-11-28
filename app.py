@@ -260,6 +260,8 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 from pathlib import Path
+from backend.utils import save_protected_csv
+
 
 # AUTH + DB
 # Assuming these imports work and the backend files are present
@@ -393,10 +395,18 @@ with st.sidebar:
         st.session_state.current_page = "Dashboard"
 
     page = st.radio(
-        "Navigation",
-        ["Dashboard", "Upload Data", "Risk Assessment", "Privacy Tools", "Utility & Report"],
-        key="current_page"
-    )
+    "Navigation",
+    [
+        "Dashboard",
+        "Upload Data",
+        "Risk Assessment",
+        "Privacy Tools",
+        "Utility & Report",
+        "Protected Files"       # <-- ADD THIS
+    ],
+    key="current_page"
+)
+
 
     if st.session_state.user["role"] == "Admin":
         # FIX 4: Removed unnecessary placeholder " " from admin panel options
@@ -524,7 +534,7 @@ elif page == "Privacy Tools":
         ]
     )
 
-    st.info("A protected dataset will overwrite the previously generated one.")
+    st.info("A protected dataset will overwrite the previously generated one and will be SAVED automatically.")
 
     # -----------------------------------------------------------
     # 1) LAPLACE DP
@@ -539,11 +549,14 @@ elif page == "Privacy Tools":
             try:
                 prot = laplace_mechanism(df, cols, eps)
                 st.session_state.protected_df = prot
-                st.success("Laplace DP applied successfully.")
+
+                # SAVE FILE
+                save_protected_csv(prot, "laplace_dp")
+
+                st.success("Laplace DP applied and saved.")
                 st.dataframe(prot.head())
             except Exception as e:
                 st.error(f"Error: {e}")
-
 
     # -----------------------------------------------------------
     # 2) GAUSSIAN DP
@@ -559,11 +572,13 @@ elif page == "Privacy Tools":
                 from backend.differential_privacy import gaussian_mechanism
                 prot = gaussian_mechanism(df, cols, sigma)
                 st.session_state.protected_df = prot
-                st.success("Gaussian DP applied successfully.")
+
+                save_protected_csv(prot, "gaussian_dp")
+
+                st.success("Gaussian DP applied and saved.")
                 st.dataframe(prot.head())
             except Exception as e:
                 st.error(f"Error: {e}")
-
 
     # -----------------------------------------------------------
     # 3) RANDOMIZED RESPONSE
@@ -579,11 +594,13 @@ elif page == "Privacy Tools":
                 from backend.differential_privacy import randomized_response
                 prot = randomized_response(df, cols, prob)
                 st.session_state.protected_df = prot
-                st.success("Randomized response applied successfully.")
+
+                save_protected_csv(prot, "randomized_response")
+
+                st.success("Randomized response applied and saved.")
                 st.dataframe(prot.head())
             except Exception as e:
                 st.error(f"Error: {e}")
-
 
     # -----------------------------------------------------------
     # 4) MICROAGGREGATION
@@ -599,11 +616,13 @@ elif page == "Privacy Tools":
                 from backend.differential_privacy import microaggregation
                 prot = microaggregation(df, cols, k)
                 st.session_state.protected_df = prot
-                st.success(f"Microaggregation applied (k={k}).")
+
+                save_protected_csv(prot, "microaggregation")
+
+                st.success(f"Microaggregation applied (k={k}) and saved.")
                 st.dataframe(prot.head())
             except Exception as e:
                 st.error(f"Error: {e}")
-
 
     # -----------------------------------------------------------
     # 5) DATE NOISE
@@ -619,11 +638,13 @@ elif page == "Privacy Tools":
                 from backend.differential_privacy import date_noise
                 prot = date_noise(df, cols, max_days=days)
                 st.session_state.protected_df = prot
-                st.success("Date noise applied.")
+
+                save_protected_csv(prot, "date_noise")
+
+                st.success("Date noise applied and saved.")
                 st.dataframe(prot.head())
             except Exception as e:
                 st.error(f"Error: {e}")
-
 
     # -----------------------------------------------------------
     # 6) MASKING / REDACTION
@@ -640,11 +661,13 @@ elif page == "Privacy Tools":
                 from backend.differential_privacy import mask_column
                 prot = mask_column(df, cols, start, end)
                 st.session_state.protected_df = prot
-                st.success("Masking applied.")
+
+                save_protected_csv(prot, "masking")
+
+                st.success("Masking applied and saved.")
                 st.dataframe(prot.head())
             except Exception as e:
                 st.error(f"Error: {e}")
-
 
     # -----------------------------------------------------------
     # 7) SYNTHETIC DATA
@@ -658,11 +681,13 @@ elif page == "Privacy Tools":
             try:
                 prot = synthesize(df, rows)
                 st.session_state.protected_df = prot
-                st.success("Synthetic data generated.")
+
+                save_protected_csv(prot, "synthetic_data")
+
+                st.success("Synthetic data generated and saved.")
                 st.dataframe(prot.head())
             except Exception as e:
                 st.error(f"Error: {e}")
-
 
     # -----------------------------------------------------------
     # 8) SDC
@@ -672,7 +697,6 @@ elif page == "Privacy Tools":
 
         sdc_method = st.selectbox("Choose SDC Method", ["Topcoding", "Generalization/Binning", "Suppression"])
 
-        # Topcoding
         if sdc_method == "Topcoding":
             col = st.selectbox("Column", numeric_cols)
             thr = st.number_input("Threshold", value=100.0)
@@ -681,10 +705,14 @@ elif page == "Privacy Tools":
                 try:
                     df2 = top_code(df.copy(), col, thr)
                     st.session_state.protected_df = df2
-                    st.success("Topcoding applied.")
+
+                    save_protected_csv(df2, "topcoding")
+
+                    st.success("Topcoding applied and saved.")
                     st.dataframe(df2.head())
                 except Exception as e:
                     st.error(f"Error: {e}")
+
 
 # ---------------- UTILITY + REPORT ----------------
 elif page == "Utility & Report":
@@ -740,5 +768,54 @@ elif page == "Utility & Report":
         except Exception as e:
              st.error(f"An error occurred during Utility Analysis: {e}")
 
+# ---------------- PROTECTED FILE MANAGER ----------------
+elif page == "Protected Files":
+    require_role(["Admin", "Analyst", "Viewer"])
+
+    st.markdown("<h1>🗂 Protected File Manager</h1>", unsafe_allow_html=True)
+
+    if not PROTECTED_DIR.exists():
+        st.error("Protected directory does not exist.")
+        st.stop()
+
+    protected_files = list(PROTECTED_DIR.glob("*.csv"))
+
+    if not protected_files:
+        st.info("No protected files generated yet.")
+        st.stop()
+
+    # Show file list
+    file_names = [f.name for f in protected_files]
+    selected_file = st.selectbox("Select a protected file", file_names)
+
+    file_path = PROTECTED_DIR / selected_file
+
+    st.markdown("### File Preview")
+
+    try:
+        df_preview = pd.read_csv(file_path)
+        st.dataframe(df_preview.head(), use_container_width=True)
+    except Exception as e:
+        st.error(f"Could not read CSV: {e}")
+
+    st.markdown("---")
+
+    # Download button
+    with open(file_path, "rb") as f:
+        st.download_button(
+            label="⬇️ Download Protected CSV",
+            data=f.read(),
+            file_name=selected_file,
+            mime="text/csv"
+        )
+
+    # Delete button
+    if st.button("🗑 Delete This File"):
+        try:
+            file_path.unlink(missing_ok=True)
+            st.success(f"{selected_file} deleted successfully.")
+            st.rerun()
+        except Exception as e:
+            st.error(f"Error deleting file: {e}")
 
              

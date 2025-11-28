@@ -75,7 +75,7 @@
 
 # # ---------------- LOGIN UI ----------------
 # def login_signup_page():
-#     st.markdown("<h1 style='text-align:center;'>🔐 Safe Data Platform</h1>", unsafe_allow_html=True)
+#     st.markdown("<h1 style='text-align:center;'>🔐 KavachX</h1>", unsafe_allow_html=True)
 
 #     tab1, tab2 = st.tabs(["Login", "Signup"])
 
@@ -340,7 +340,7 @@ if "risk_summary" not in st.session_state:
 
 # ---------------- LOGIN UI ----------------
 def login_signup_page():
-    st.markdown("<h1 style='text-align:center;'>🔐 Safe Data Platform</h1>", unsafe_allow_html=True)
+    st.markdown("<h1 style='text-align:center;'>🔐 KavachX</h1>", unsafe_allow_html=True)
 
     tab1, tab2 = st.tabs(["Login", "Signup"])
 
@@ -491,84 +491,200 @@ elif page == "Risk Assessment":
             except Exception as e:
                 st.error(f"Could not generate group size histogram. Check selected columns. Error: {e}")
 
-# ---------------- PRIVACY TOOLS ----------------
+# -----------------------------------------------------------
+# PRIVACY TOOLS (FULLY UPDATED WITH ADVANCED METHODS)
+# -----------------------------------------------------------
 elif page == "Privacy Tools":
     require_role(["Admin"])
 
     st.markdown("<h1>🛡 Privacy Tools</h1>", unsafe_allow_html=True)
-    
+
     if st.session_state.anon_df is None:
-        st.warning("Upload anonymized dataset first in the **Upload Data** page.")
+        st.warning("Upload anonymized dataset first in the Upload Data page.")
         st.stop()
-        
-    # Get columns now that we know anon_df exists
-    all_cols = st.session_state.anon_df.columns.tolist()
 
-    tool = st.selectbox("Choose a method", ["Differential Privacy", "Synthetic Data", "SDC (Topcoding/Generalization/Suppression)"])
-    
-    if st.session_state.protected_df is not None:
-         st.info("A protected dataset is currently loaded. Applying a new tool will overwrite it.")
+    df = st.session_state.anon_df.copy()
+    all_cols = df.columns.tolist()
 
-    if tool == "Differential Privacy":
-        st.markdown("### Differential Privacy (Laplace Mechanism)")
-        
-        eps = st.slider("Epsilon ($\epsilon$)", 0.05, 5.0, 1.0, help="Lower Epsilon means higher privacy but lower utility.")
-        # FIX 2: Moved column selection inside the check
-        num_cols = st.multiselect("Numeric Columns", all_cols)
+    numeric_cols = df.select_dtypes(include=['number']).columns.tolist()
+    categorical_cols = df.select_dtypes(exclude=['number']).columns.tolist()
+    date_cols = [c for c in all_cols if "date" in c.lower()]
 
-        if not num_cols:
-            st.warning("Select at least one numeric column to apply DP.")
-        elif st.button("Apply DP"):
-            with st.spinner("Applying Laplace Noise..."):
-                try:
-                    prot = laplace_mechanism(st.session_state.anon_df, num_cols, eps)
-                    st.session_state.protected_df = prot
-                    st.success("Differential Privacy applied.")
-                    st.dataframe(prot.head())
-                except Exception as e:
-                    st.error(f"Error applying DP: {e}")
+    tool = st.selectbox(
+        "Choose a method",
+        [
+            "Differential Privacy (Laplace)",
+            "Differential Privacy (Gaussian)",
+            "Randomized Response (Categorical Noise)",
+            "Microaggregation (k-Anonymity)",
+            "Date Noise",
+            "Masking / Redaction",
+            "Synthetic Data Generation",
+            "SDC (Topcoding / Generalization / Suppression)"
+        ]
+    )
 
-    elif tool == "Synthetic Data":
-        st.markdown("### Synthetic Data Generation")
-        rows = st.number_input("Number of Synthetic Rows to Generate", value=len(st.session_state.anon_df), min_value=1)
-        if st.button("Generate Synthetic"):
-            with st.spinner(f"Generating {rows} synthetic rows..."):
-                try:
-                    prot = synthesize(st.session_state.anon_df, rows)
-                    st.session_state.protected_df = prot
-                    st.success("Synthetic data generated.")
-                    st.dataframe(prot.head())
-                except Exception as e:
-                    st.error(f"Error generating synthetic data: {e}")
+    st.info("A protected dataset will overwrite the previously generated one.")
 
-    elif tool == "SDC (Topcoding/Generalization/Suppression)":
-        st.markdown("### Statistical Disclosure Control (SDC)")
-        sdc_method = st.selectbox("Select SDC Method", ["Topcoding", "Generalization/Binning", "Suppression"])
-        
+    # -----------------------------------------------------------
+    # 1) LAPLACE DP
+    # -----------------------------------------------------------
+    if tool == "Differential Privacy (Laplace)":
+        st.subheader("Laplace Mechanism")
+
+        eps = st.slider("Epsilon ε", 0.01, 5.0, 1.0)
+        cols = st.multiselect("Select Numeric Columns", numeric_cols)
+
+        if st.button("Apply Laplace DP"):
+            try:
+                prot = laplace_mechanism(df, cols, eps)
+                st.session_state.protected_df = prot
+                st.success("Laplace DP applied successfully.")
+                st.dataframe(prot.head())
+            except Exception as e:
+                st.error(f"Error: {e}")
+
+
+    # -----------------------------------------------------------
+    # 2) GAUSSIAN DP
+    # -----------------------------------------------------------
+    if tool == "Differential Privacy (Gaussian)":
+        st.subheader("Gaussian Mechanism")
+
+        sigma = st.slider("Sigma (Standard Deviation)", 0.1, 10.0, 1.0)
+        cols = st.multiselect("Select Numeric Columns", numeric_cols)
+
+        if st.button("Apply Gaussian DP"):
+            try:
+                from backend.differential_privacy import gaussian_mechanism
+                prot = gaussian_mechanism(df, cols, sigma)
+                st.session_state.protected_df = prot
+                st.success("Gaussian DP applied successfully.")
+                st.dataframe(prot.head())
+            except Exception as e:
+                st.error(f"Error: {e}")
+
+
+    # -----------------------------------------------------------
+    # 3) RANDOMIZED RESPONSE
+    # -----------------------------------------------------------
+    if tool == "Randomized Response (Categorical Noise)":
+        st.subheader("Randomized Response")
+
+        prob = st.slider("Noise Probability", 0.01, 0.90, 0.15)
+        cols = st.multiselect("Select Categorical Columns", categorical_cols)
+
+        if st.button("Apply Randomized Response"):
+            try:
+                from backend.differential_privacy import randomized_response
+                prot = randomized_response(df, cols, prob)
+                st.session_state.protected_df = prot
+                st.success("Randomized response applied successfully.")
+                st.dataframe(prot.head())
+            except Exception as e:
+                st.error(f"Error: {e}")
+
+
+    # -----------------------------------------------------------
+    # 4) MICROAGGREGATION
+    # -----------------------------------------------------------
+    if tool == "Microaggregation (k-Anonymity)":
+        st.subheader("Microaggregation")
+
+        k = st.slider("Cluster Size (k)", 2, 10, 3)
+        cols = st.multiselect("Select Numeric Columns", numeric_cols)
+
+        if st.button("Apply Microaggregation"):
+            try:
+                from backend.differential_privacy import microaggregation
+                prot = microaggregation(df, cols, k)
+                st.session_state.protected_df = prot
+                st.success(f"Microaggregation applied (k={k}).")
+                st.dataframe(prot.head())
+            except Exception as e:
+                st.error(f"Error: {e}")
+
+
+    # -----------------------------------------------------------
+    # 5) DATE NOISE
+    # -----------------------------------------------------------
+    if tool == "Date Noise":
+        st.subheader("Date Noise (± Random Days)")
+
+        days = st.slider("Maximum Days to Add/Remove", 1, 60, 30)
+        cols = st.multiselect("Select Date Columns", date_cols)
+
+        if st.button("Apply Date Noise"):
+            try:
+                from backend.differential_privacy import date_noise
+                prot = date_noise(df, cols, max_days=days)
+                st.session_state.protected_df = prot
+                st.success("Date noise applied.")
+                st.dataframe(prot.head())
+            except Exception as e:
+                st.error(f"Error: {e}")
+
+
+    # -----------------------------------------------------------
+    # 6) MASKING / REDACTION
+    # -----------------------------------------------------------
+    if tool == "Masking / Redaction":
+        st.subheader("Data Masking")
+
+        cols = st.multiselect("Select Columns to Mask", all_cols)
+        start = st.slider("Visible Characters (Start)", 1, 5, 2)
+        end = st.slider("Visible Characters (End)", 1, 5, 2)
+
+        if st.button("Apply Masking"):
+            try:
+                from backend.differential_privacy import mask_column
+                prot = mask_column(df, cols, start, end)
+                st.session_state.protected_df = prot
+                st.success("Masking applied.")
+                st.dataframe(prot.head())
+            except Exception as e:
+                st.error(f"Error: {e}")
+
+
+    # -----------------------------------------------------------
+    # 7) SYNTHETIC DATA
+    # -----------------------------------------------------------
+    if tool == "Synthetic Data Generation":
+        st.subheader("Synthetic Data")
+
+        rows = st.number_input("Synthetic Rows", min_value=10, value=len(df))
+
+        if st.button("Generate Synthetic Data"):
+            try:
+                prot = synthesize(df, rows)
+                st.session_state.protected_df = prot
+                st.success("Synthetic data generated.")
+                st.dataframe(prot.head())
+            except Exception as e:
+                st.error(f"Error: {e}")
+
+
+    # -----------------------------------------------------------
+    # 8) SDC
+    # -----------------------------------------------------------
+    if tool == "SDC (Topcoding / Generalization / Suppression)":
+        st.subheader("SDC Tools")
+
+        sdc_method = st.selectbox("Choose SDC Method", ["Topcoding", "Generalization/Binning", "Suppression"])
+
+        # Topcoding
         if sdc_method == "Topcoding":
-            col = st.selectbox("Column for topcoding", all_cols)
-            thr = st.number_input(f"Threshold (Values above this will be grouped as '{col}_topcoded')", value=100.0)
-            if st.button("Apply Topcoding"):
-                with st.spinner("Applying Topcoding..."):
-                    try:
-                        df = top_code(st.session_state.anon_df.copy(), col, thr)
-                        st.session_state.protected_df = df
-                        st.success("Topcoding applied.")
-                        st.dataframe(df.head())
-                    except Exception as e:
-                        st.error(f"Error applying topcoding: {e}")
-                        
-        elif sdc_method == "Generalization/Binning":
-            st.warning("Generalization and Binning methods require specific backend implementation not shown here.")
-            # Placeholder for generalization logic
-            # Example: generalize_binning(st.session_state.anon_df, col, bins)
-            pass
+            col = st.selectbox("Column", numeric_cols)
+            thr = st.number_input("Threshold", value=100.0)
 
-        elif sdc_method == "Suppression":
-            st.warning("Suppression methods require specific backend implementation not shown here.")
-            # Placeholder for suppression logic
-            # Example: suppress_rare(st.session_state.anon_df, col, threshold)
-            pass
+            if st.button("Apply Topcoding"):
+                try:
+                    df2 = top_code(df.copy(), col, thr)
+                    st.session_state.protected_df = df2
+                    st.success("Topcoding applied.")
+                    st.dataframe(df2.head())
+                except Exception as e:
+                    st.error(f"Error: {e}")
 
 # ---------------- UTILITY + REPORT ----------------
 elif page == "Utility & Report":

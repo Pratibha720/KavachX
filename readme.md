@@ -5,9 +5,9 @@ git clone https://github.com/YOUR-USERNAME/safe-data-platform.git
 cd safe-data-platform
 
 python -m venv .venv
-.venv\Scripts\activate     # Windows
+.venv\Scripts\activate             # Windows
 # OR
-source .venv/bin/activate  # macOS/Linux
+source .venv/bin/activate          # macOS/Linux
 
 pip install -r requirements.txt
 

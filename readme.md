@@ -14,7 +14,7 @@ pip install -r requirements.txt
 ## Run the App
 streamlit run app.py
 
-## Features
+# Features
 - Login / Signup + Roles
 - Upload datasets
 - Risk Assessment (k-anonymity, linkage risk)

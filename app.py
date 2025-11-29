@@ -422,22 +422,227 @@ with st.sidebar:
         # FIX 1: Replace st.experimental_rerun() with st.rerun()
         st.rerun()
 
-# ---------------- DASHBOARD ----------------
+# ---------------------------------------
+# ADVANCED ANALYTICS DASHBOARD (PRO STYLE)
+# ---------------------------------------
 if page == "Dashboard":
-    st.markdown("<h1>📊 Dashboard Overview</h1>", unsafe_allow_html=True)
 
-    # Check if directories exist before counting (optional, but robust)
-    upload_count = len(list(UPLOAD_DIR.glob('*.csv'))) if UPLOAD_DIR.exists() else 0
-    protected_count = len(list(PROTECTED_DIR.glob('*.csv'))) if PROTECTED_DIR.exists() else 0
-    report_count = len(list(REPORT_DIR.glob('*.pdf'))) if REPORT_DIR.exists() else 0
+    st.markdown("""
+        <h1 style='text-align:center; color:#fff; margin-top:-20px;'>
+            📊 Advanced Analytics Dashboard
+        </h1>
+        <style>
+            .chart-box {
+                background: #1e2533;
+                padding: 20px;
+                border-radius: 14px;
+                box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+                margin-bottom: 25px;
+            }
+        </style>
+    """, unsafe_allow_html=True)
 
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.markdown(f"<div class='metric-card'><div class='metric-title'>Uploaded Datasets</div><div class='metric-value'>{upload_count}</div></div>", unsafe_allow_html=True)
-    with col2:
-        st.markdown(f"<div class='metric-card'><div class='metric-title'>Protected Files</div><div class='metric-value'>{protected_count}</div></div>", unsafe_allow_html=True)
-    with col3:
-        st.markdown(f"<div class='metric-card'><div class='metric-title'>Reports Generated</div><div class='metric-value'>{report_count}</div></div>", unsafe_allow_html=True)
+    # ------------------------------------------------
+    # FIRST: VARIABLES (MUST BE DECLARED FIRST)
+    # ------------------------------------------------
+    upload_count = len(list(UPLOAD_DIR.glob('*.csv')))
+    protected_count = len(list(PROTECTED_DIR.glob('*.csv')))
+    report_count = len(list(REPORT_DIR.glob('*.pdf')))
+
+    dashboard_df = pd.DataFrame({
+        "Category": ["Uploaded", "Protected", "Reports"],
+        "Count": [upload_count, protected_count, report_count]
+    })
+
+    # ------------------------------------------------
+    # TOP METRIC CARDS  (NOW SAFE!)
+    # ------------------------------------------------
+    met1, met2, met3 = st.columns(3)
+
+    with met1:
+        st.markdown(
+            f"""
+            <div style="
+                background:#2e3a4b;
+                padding:22px;
+                border-radius:14px;
+                text-align:center;
+                color:#4FC3F7;
+                font-size:18px;
+                font-weight:bold;
+                box-shadow:0px 4px 10px rgba(0,0,0,0.4);
+            ">
+                Uploaded Files<br>
+                <span style='font-size:38px; color:#81D4FA;'>{upload_count}</span>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
+    with met2:
+        st.markdown(
+            f"""
+            <div style="
+                background:#2e3a4b;
+                padding:22px;
+                border-radius:14px;
+                text-align:center;
+                color:#A5D6A7;
+                font-size:18px;
+                font-weight:bold;
+                box-shadow:0px 4px 10px rgba(0,0,0,0.4);
+            ">
+                Protected Files<br>
+                <span style='font-size:38px; color:#C8E6C9;'>{protected_count}</span>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
+    with met3:
+        st.markdown(
+            f"""
+            <div style="
+                background:#2e3a4b;
+                padding:22px;
+                border-radius:14px;
+                text-align:center;
+                color:#FFCC80;
+                font-size:18px;
+                font-weight:bold;
+                box-shadow:0px 4px 10px rgba(0,0,0,0.4);
+            ">
+                Reports Generated<br>
+                <span style='font-size:38px; color:#FFE0B2;'>{report_count}</span>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    # ------------------------------------------------
+    # ROW 1 — AREA + BUBBLE
+    # ------------------------------------------------
+    c1, c2 = st.columns(2)
+
+    # Area Chart
+    with c1:
+        st.markdown("<div class='chart-box'>", unsafe_allow_html=True)
+        st.subheader("📈 Count Trends (Area Chart)")
+
+        area_fig = px.area(
+            dashboard_df,
+            x="Category",
+            y="Count",
+            color="Category",
+            color_discrete_map={
+                "Uploaded": "#1976D2",
+                "Protected": "#43A047",
+                "Reports": "#FB8C00"
+            }
+        )
+        area_fig.update_layout(template="plotly_dark", height=350)
+        st.plotly_chart(area_fig, use_container_width=True)
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    # Bubble Chart
+    with c2:
+        st.markdown("<div class='chart-box'>", unsafe_allow_html=True)
+        st.subheader("🟡 Bubble Chart Overview")
+
+        bubble_fig = px.scatter(
+            dashboard_df,
+            x="Category",
+            y="Count",
+            size="Count",
+            color="Category",
+            size_max=60,
+            color_discrete_map={
+                "Uploaded": "#4FC3F7",
+                "Protected": "#81C784",
+                "Reports": "#FFB74D"
+            }
+        )
+        bubble_fig.update_layout(template="plotly_dark", height=350)
+        st.plotly_chart(bubble_fig, use_container_width=True)
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    # ------------------------------------------------
+    # ROW 2 — GROUPED BAR + MULTI-LINE
+    # ------------------------------------------------
+    c3, c4 = st.columns(2)
+
+    # Grouped bar chart
+    with c3:
+        st.markdown("<div class='chart-box'>", unsafe_allow_html=True)
+        st.subheader("📊 Grouped Bar Chart")
+
+        grouped_df = pd.DataFrame({
+            "Metric": ["Files", "Files", "Files"],
+            "Category": ["Uploaded", "Protected", "Reports"],
+            "Value": [upload_count, protected_count, report_count]
+        })
+
+        gbar = px.bar(
+            grouped_df,
+            x="Metric",
+            y="Value",
+            color="Category",
+            barmode="group",
+            color_discrete_map={
+                "Uploaded": "#64B5F6",
+                "Protected": "#81C784",
+                "Reports": "#FFB74D"
+            }
+        )
+        gbar.update_layout(template="plotly_dark", height=350)
+        st.plotly_chart(gbar, use_container_width=True)
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    # Multi-line chart
+    with c4:
+        st.markdown("<div class='chart-box'>", unsafe_allow_html=True)
+        st.subheader("📉 Multi-Line Trend")
+
+        mline_fig = px.line(
+            dashboard_df,
+            x="Category",
+            y="Count",
+            markers=True,
+            color="Category",
+            color_discrete_map={
+                "Uploaded": "#1E88E5",
+                "Protected": "#43A047",
+                "Reports": "#FB8C00"
+            }
+        )
+        mline_fig.update_layout(template="plotly_dark", height=350)
+        st.plotly_chart(mline_fig, use_container_width=True)
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    # ------------------------------------------------
+    # Row 3 — Horizontal Bar (Full Width)
+    # ------------------------------------------------
+    st.markdown("<div class='chart-box'>", unsafe_allow_html=True)
+    st.subheader("📘 Horizontal Comparison")
+
+    hbar = px.bar(
+        dashboard_df,
+        x="Count",
+        y="Category",
+        orientation="h",
+        color="Category",
+        color_discrete_map={
+            "Uploaded": "#42A5F5",
+            "Protected": "#66BB6A",
+            "Reports": "#FFA726"
+        }
+    )
+    hbar.update_layout(template="plotly_dark", height=350)
+    st.plotly_chart(hbar, use_container_width=True)
+    st.markdown("</div>", unsafe_allow_html=True)
+
 
 # ---------------- UPLOAD DATA ----------------
 elif page == "Upload Data":

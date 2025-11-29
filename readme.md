@@ -1,4 +1,4 @@
-# Safe Data Protection Platform KavachX
+# KavachX: Safe Data Protection Platform 
 
 ## Installation
 git clone https://github.com/YOUR-USERNAME/safe-data-platform.git

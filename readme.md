@@ -1,8 +1,8 @@
 # KavachX: Safe Data Protection Platform 
 
 ## Installation
-git clone https://github.com/YOUR-USERNAME/safe-data-platform.git
-cd safe-data-platform
+git clone https://github.com/Pratibha720/KavachX.git
+cd KavachX
 
 python -m venv .venv
 .venv\Scripts\activate             --------------------> Windows
